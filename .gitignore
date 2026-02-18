@@ -1,9 +1,24 @@
-__pycache__/
-.ipynb_checkpoints/
+cat > .gitignore <<'EOF'
+# envs
+myenv/
 venv/
+
+# python/jupyter
+__pycache__/
 *.pyc
-# Data
+.ipynb_checkpoints/
+
+# data
 Data/
 *.zip
 *.xlsx
 *.csv
+
+# model artifacts
+*.pth
+*.pt
+*.ckpt
+
+# caches
+.cache/
+EOF
