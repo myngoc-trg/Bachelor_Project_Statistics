@@ -9,10 +9,7 @@ __pycache__/
 .ipynb_checkpoints/
 
 # data
-Data/
-*.zip
-*.xlsx
-*.csv
+Data/*
 
 # model artifacts
 *.pth
