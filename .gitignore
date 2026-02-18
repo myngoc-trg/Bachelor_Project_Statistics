@@ -1,7 +1,6 @@
 cat > .gitignore <<'EOF'
 # envs
-myenv/
-.venv/*
+.venv/**
 
 # python/jupyter
 __pycache__/
@@ -9,7 +8,7 @@ __pycache__/
 .ipynb_checkpoints/
 
 # data
-Data/*
+Data/**
 
 # model artifacts
 *.pth
