@@ -1,7 +1,7 @@
 cat > .gitignore <<'EOF'
 # envs
 myenv/
-venv/
+.venv/*
 
 # python/jupyter
 __pycache__/
