@@ -2,4 +2,8 @@ __pycache__/
 .ipynb_checkpoints/
 venv/
 *.pyc
+# Data
 Data/
+*.zip
+*.xlsx
+*.csv

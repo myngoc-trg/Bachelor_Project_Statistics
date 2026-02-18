@@ -5,7 +5,7 @@ from PIL import Image
 from typing import List, Tuple, Dict
 
 class PollenFolderWithSizeDataset(Dataset):
-    def __init__(self, img_dir: str, class_to_idx: Dict[str, int], size_lookup: Dict[str, Tuple[float, float]], transform=None):
+    def __init__(self, img_dir: str, class_to_idx: Dict[str, int], size_lookup: Dict[str, Tuple[float, float]], species_mean_lookup: Dict[str, Tuple[float, float]], global_mean: Tuple[float, float], transform=None):
         """
         Initializes the dataset with the directory of images and a size lookup dictionary.
 
@@ -13,6 +13,8 @@ class PollenFolderWithSizeDataset(Dataset):
             img_dir (str): The directory containing the images.
             class_to_idx (Dict[str, int]): A dictionary mapping class names to integer indices.
             size_lookup (Dict[str, Tuple[float, float]]): A dictionary mapping image names to their sizes (mijoraxis, minoraxis).
+            species_mean_lookup (Dict[str, Tuple[float, float]]): A dictionary mapping species names to their mean sizes.
+            global_mean (Tuple[float, float]): The overall mean size across all species.
             transform: Optional transformations to be applied on the images.
             
         Returns:
@@ -23,6 +25,8 @@ class PollenFolderWithSizeDataset(Dataset):
         self.img_dir = img_dir
         self.class_to_idx = class_to_idx
         self.size_lookup = size_lookup
+        self.species_mean_lookup = species_mean_lookup
+        self.global_mean = global_mean
         self.transform = transform
         
         # Build list of (image_path, label) tuples
@@ -53,11 +57,26 @@ class PollenFolderWithSizeDataset(Dataset):
         img = Image.open(img_path).convert('RGB')
         if self.transform:
             img = self.transform(img)
-            
+        
+        '''
         if filename not in self.size_lookup:
             raise KeyError(f"Image filename '{filename}' not found in size lookup dictionary.")
         
         major, minor = self.size_lookup[filename]
+        ''' 
+        
+        if filename in self.size_lookup:
+            major, minor = self.size_lookup[filename]
+        else:
+            # Fill in species mean from the same species if available
+            if class_name not in self.species_mean_lookup:
+                # last resort: fill with overall mean
+                major, minor = self.global_mean
+                
+            else:
+                major, minor = self.species_mean_lookup[class_name]
+           
+             
         size = torch.tensor([major, minor], dtype=torch.float32)
         
         label = torch.tensor(self.class_to_idx[class_name], dtype=torch.long)

@@ -12,18 +12,22 @@ class CNNWithSizeMLP(nn.Module):
         # Pretrained ResNet backbone
         self.backbone = models.resnet18(weights=models.ResNet18_Weights.DEFAULT if pretrained else None)
         self.backbone.fc = nn.Identity()  # Remove the final classification layer
+        self.fc = nn.Linear(512 + 2, num_classes)  # Final classifier input: image features + size features
         
-        
-        # Final classifier
+        '''
         self.classifier = nn.Sequential(
             nn.Linear(512 + size_dim, 256),
             nn.ReLU(),
             nn.Linear(256, num_classes)
         )
     
+        '''
+        # Final classifier
+        
     def forward(self, x_img, x_size):
         img_features = self.backbone(x_img)  # Extract image features
         combined_features = torch.cat((img_features, x_size), dim=1)  # Combine features
-        output = self.classifier(combined_features)  # Classify
+        logits = self.fc(combined_features)  # Classify
+        # output = self.classifier(combined_features)  # Classify
         
-        return output
+        return logits
