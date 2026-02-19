@@ -42,7 +42,7 @@ def lookup_size_from_excel(excel_path: str):
                 print(f"  {species}: {count}")
         print("======================================\n")
     else:
-        print("No missing size data found. All rows have valid majoraxis and minoraxis values.")
+        print("No missing size data found. All rows have valid majoraxis and minoraxis values in Excel file.")
         
     # Convert size columns to numeric (missing -> NaN)
     df['majoraxis'] = pd.to_numeric(df['majoraxis'], errors='coerce')
