@@ -24,8 +24,9 @@ class CNNWithSizeMLP(nn.Module):
         
         self.backbone.fc = nn.Identity()  # Remove the final classification layer, replace with identity to get features ("do nothing" layer)
         # Backbone returns flattened 512-dim feature vector
-        self.fc = nn.Linear(512 + size_dim, num_classes)  # Final classifier input: image features + size features
-        
+        self.embed_dim = 512   
+
+        self.fc = nn.Linear(self.embed_dim + size_dim, num_classes)
         '''
         self.classifier = nn.Sequential(
             nn.Linear(512 + size_dim, 256),
@@ -35,7 +36,9 @@ class CNNWithSizeMLP(nn.Module):
     
         '''
       
-        
+    def embed(self, x_img): 
+        return self.backbone(x_img)  # [B, 512]
+
     def forward(self, x_img, x_size):
         img_features = self.backbone(x_img)  # Extract image features
         combined_features = torch.cat((img_features, x_size), dim=1)  # Combine features

@@ -4,7 +4,7 @@ from typing import Dict, Tuple, List
 import pandas as pd
 
 
-def lookup_size_from_excel(excel_path: str):
+def lookup_size_from_excel(excel_path: str, stats_filenames=None):
     """
     Reads an Excel file containing image names and their corresponding sizes,
     and returns a dictionary mapping image names to their sizes.
@@ -65,12 +65,28 @@ def lookup_size_from_excel(excel_path: str):
             float(row['majoraxis']),
             float(row['minoraxis'])
         ) 
-                                           
+
+    if stats_filenames is not None:
+        stats_df = df[df["ping_name"].astype(str).isin(stats_filenames)].copy()
+
+    if len(stats_df) == 0:
+        raise ValueError(
+            "stats_filenames produced 0 matching rows in Excel. "
+            "Check filename matching between TRAIN_DIR and Excel ping_name."
+        )
+    else:
+        stats_df = df
+
     global_mean = (
-        float(df['majoraxis'].mean()),
-        float(df['minoraxis'].mean())
+    float(stats_df["majoraxis"].mean()),
+    float(stats_df["minoraxis"].mean())
     )
-    
+
+    global_std = (
+        float(stats_df["majoraxis"].std(ddof=0)),
+        float(stats_df["minoraxis"].std(ddof=0))
+    )   
+
     # Original size available, fill lookup
     for _, row in df.iterrows():
         image_name = row['ping_name']
@@ -78,4 +94,4 @@ def lookup_size_from_excel(excel_path: str):
         minoraxis = float(row['minoraxis'])
         lookup[image_name] = (majoraxis, minoraxis)
     
-    return lookup, species_mean_lookup, global_mean
+    return lookup, species_mean_lookup, global_mean, global_std
