@@ -162,9 +162,12 @@ def setup_datasets(
             val_ratio=0.2,
             seed=seed
         )
+        
+        
 
     print(f"Train subset size: {len(train_dataset)}")
-    print(f"Validation subset size: {len(val_dataset)}")
+    if val_dataset is not None:
+        print(f"Validation subset size: {len(val_dataset)}")
 
     print("Dataset setup complete.")
 

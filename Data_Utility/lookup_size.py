@@ -68,12 +68,11 @@ def lookup_size_from_excel(excel_path: str, stats_filenames=None):
 
     if stats_filenames is not None:
         stats_df = df[df["ping_name"].astype(str).isin(stats_filenames)].copy()
-
-    if len(stats_df) == 0:
-        raise ValueError(
-            "stats_filenames produced 0 matching rows in Excel. "
-            "Check filename matching between TRAIN_DIR and Excel ping_name."
-        )
+        if len(stats_df) == 0:
+            raise ValueError(
+                "stats_filenames produced 0 matching rows in Excel. "
+                "Check filename matching between TRAIN_DIR and Excel ping_name."
+            )
     else:
         stats_df = df
 

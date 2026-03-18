@@ -6,10 +6,21 @@ import torch
 def plot_confusion_matrix(conf,
                           idx_to_class,
                           normalize=True,
+                          sort_by_recall_desc = True,
                           figsize=(10, 8),
                           cmap="coolwarm"):
 
     conf = conf.cpu()
+
+    row_sums = conf.sum(dim=1).clamp(min=1)
+    recalls = conf.diag().float() / row_sums.float()
+
+    order = list(range(conf.shape[0]))
+    
+    if sort_by_recall_desc:
+        order = torch.argsort(recalls, descending=descending).tolist()
+        conf = conf[order][:, order] 
+
 
     if normalize:
         conf = conf.float()
@@ -18,7 +29,7 @@ def plot_confusion_matrix(conf,
         vmax = 1
         title = "Normalized Confusion Matrix"
     else:
-        conf = conf.round().to(torch.int64)   # 🔥 force integer type
+        conf = conf.round().to(torch.int64)   
         fmt = "d"
         vmax = None
         title = "Confusion Matrix (Counts)"
