@@ -9,7 +9,6 @@ from .eval_epoch import eval_epoch
 def train_model(
     model,
     train_dataset,
-    test_dataset,
     optimizer,
     loss_fn,
     device,
@@ -49,12 +48,7 @@ def train_model(
     )
 
 
-    test_loader = DataLoader(
-        test_dataset,
-        batch_size=batch_size,
-        shuffle=False,
-        num_workers=num_workers
-    )
+   
     if val_dataset is not None:
         val_loader = DataLoader(
         val_dataset,
@@ -74,7 +68,8 @@ def train_model(
         best_epoch = 0
         patience_left = early_stopping_patience
 
-    history = {
+    else:
+        history = {
             "train_loss": [],
             "train_acc": []
         }
@@ -102,13 +97,12 @@ def train_model(
 
         if val_dataset is not None:
             val_recall_per_class, val_acc, val_loss,_ = eval_epoch(
-                model,
-                val_loader,
-                device,
-                recall_metric,
-                accuracy_metric,
-                None,
-                loss_fn
+                model=model,
+                loader=val_loader,
+                device=device,
+                num_classes=num_classes,
+                loss_fn=loss_fn,
+                inspect_features=False
             )
             history["val_loss"].append(val_loss)
             history["val_acc"].append(val_acc)
@@ -159,4 +153,4 @@ def train_model(
                     save_path
                 )
         
-    return history, test_loader
+    return history

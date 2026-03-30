@@ -3,24 +3,27 @@ import seaborn as sns
 import torch
 
 
-def plot_confusion_matrix(conf,
-                          idx_to_class,
-                          normalize=True,
-                          sort_by_recall_desc = True,
-                          figsize=(10, 8),
-                          cmap="coolwarm"):
-
+def plot_confusion_matrix(
+    conf,
+    idx_to_class,
+    normalize=True,
+    sort_by_recall_desc=True,
+    figsize=(10, 8),
+    cmap="coolwarm"
+):
     conf = conf.cpu()
 
     row_sums = conf.sum(dim=1).clamp(min=1)
     recalls = conf.diag().float() / row_sums.float()
 
     order = list(range(conf.shape[0]))
-    
-    if sort_by_recall_desc:
-        order = torch.argsort(recalls, descending=descending).tolist()
-        conf = conf[order][:, order] 
 
+    if sort_by_recall_desc:
+        order = torch.argsort(recalls, descending=True).tolist()
+        conf = conf[order][:, order]
+
+    # reorder labels to match reordered matrix
+    sorted_labels = [idx_to_class[i] for i in order]
 
     if normalize:
         conf = conf.float()
@@ -29,10 +32,13 @@ def plot_confusion_matrix(conf,
         vmax = 1
         title = "Normalized Confusion Matrix"
     else:
-        conf = conf.round().to(torch.int64)   
+        conf = conf.round().to(torch.int64)
         fmt = "d"
         vmax = None
         title = "Confusion Matrix (Counts)"
+
+    if sort_by_recall_desc:
+        title += " (sorted by recall descending)"
 
     plt.figure(figsize=figsize)
 
@@ -43,8 +49,8 @@ def plot_confusion_matrix(conf,
         cmap=cmap,
         vmin=0,
         vmax=vmax,
-        xticklabels=[idx_to_class[i] for i in range(len(idx_to_class))],
-        yticklabels=[idx_to_class[i] for i in range(len(idx_to_class))]
+        xticklabels=sorted_labels,
+        yticklabels=sorted_labels
     )
 
     plt.xlabel("Predicted Class", fontsize=12)

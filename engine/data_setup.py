@@ -23,6 +23,7 @@ def list_image_filenames(root_dir):
 
 
 def setup_datasets(
+    fill_missing_bool=False,
     val_bool=False,
     aug_bool=False,
     norm_bool=False,
@@ -86,7 +87,7 @@ def setup_datasets(
             class_to_idx=class_to_idx,
             size_lookup=size_lookup,
             species_mean_lookup=species_mean_lookup,
-            fill_missing_bool=True,
+            fill_missing_bool=fill_missing_bool,
             transform_base=base_transform,
             transform_aug=aug_transform,
             augment=True,
@@ -122,7 +123,7 @@ def setup_datasets(
             size_lookup=size_lookup,
             species_mean_lookup=species_mean_lookup,
             transform=base_transform
-            ,fill_missing_bool=True
+            ,fill_missing_bool=fill_missing_bool
             ,normalize_size=norm_bool,
             global_mean=train_mean,
             global_std=train_std
