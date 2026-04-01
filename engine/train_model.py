@@ -5,6 +5,8 @@ from torchmetrics.classification import MulticlassRecall, MulticlassAccuracy
 
 from .train_epoch import train_epoch
 from .eval_epoch import eval_epoch
+from .random_seed import seed_worker
+
 
 def train_model(
     model,
@@ -13,49 +15,59 @@ def train_model(
     loss_fn,
     device,
     model_name: str,
-    val_dataset= None,
-    num_classes = 10,
+    val_dataset=None,
+    num_classes: int = 10,
     batch_size: int = 32,
     epochs: int = 35,
     num_workers: int = 0,
     print_every: int = 5,
     early_stopping_patience: int = 8,
     min_delta: float = 1e-4,
+    seed: int = 42,
 ):
     """
     Full training pipeline using train_epoch() and eval_epoch().
-    
-    Metrics (per-class recall and micro accuracy) are created internally
-    based on the number of classes inferred from the training dataset.
+
+    Note:
+    The global seed should already have been set BEFORE model/optimizer creation.
+    The seed here is used mainly for DataLoader reproducibility.
     """
-        
+
     recall_metric = MulticlassRecall(
-        num_classes=num_classes, average = None).to(device)
+        num_classes=num_classes, average=None
+    ).to(device)
+
     accuracy_metric = MulticlassAccuracy(
-        num_classes=num_classes, average = "micro").to(device)  
- 
-    #save_dir = os.path.join("models", "saved_models")
+        num_classes=num_classes, average="micro"
+    ).to(device)
+
     save_dir = os.path.join("models", "saved_trained_models")
-    os.makedirs(save_dir, exist_ok=True)   # create folder if not exists
+    os.makedirs(save_dir, exist_ok=True)
 
     save_path = os.path.join(save_dir, model_name)
+
+    # Generator for deterministic DataLoader shuffling
+    g = torch.Generator()
+    g.manual_seed(seed)
 
     train_loader = DataLoader(
         train_dataset,
         batch_size=batch_size,
         shuffle=True,
-        num_workers=num_workers
+        num_workers=num_workers,
+        worker_init_fn=seed_worker if num_workers > 0 else None,
+        generator=g,
     )
 
-
-   
     if val_dataset is not None:
         val_loader = DataLoader(
-        val_dataset,
-        batch_size=batch_size,
-        shuffle=True,
-        num_workers=num_workers
-    )
+            val_dataset,
+            batch_size=batch_size,
+            shuffle=False,   # better for validation reproducibility
+            num_workers=num_workers,
+            worker_init_fn=seed_worker if num_workers > 0 else None,
+            generator=g,
+        )
 
         history = {
             "train_loss": [],
@@ -73,11 +85,9 @@ def train_model(
             "train_loss": [],
             "train_acc": []
         }
-    
-    
 
     for epoch in range(1, epochs + 1):
-        
+
         train_loss, train_acc = train_epoch(
             model,
             train_loader,
@@ -90,13 +100,12 @@ def train_model(
         history["train_acc"].append(train_acc)
 
         print(
-                f"Epoch {epoch}/{epochs} | "
-                f"Train Loss: {train_loss:.4f}, Train Acc: {train_acc:.4f}"
-            )
-
+            f"Epoch {epoch}/{epochs} | "
+            f"Train Loss: {train_loss:.4f}, Train Acc: {train_acc:.4f}"
+        )
 
         if val_dataset is not None:
-            val_recall_per_class, val_acc, val_loss,_ = eval_epoch(
+            val_recall_per_class, val_acc, val_loss, _ = eval_epoch(
                 model=model,
                 loader=val_loader,
                 device=device,
@@ -104,31 +113,34 @@ def train_model(
                 loss_fn=loss_fn,
                 inspect_features=False
             )
+
             history["val_loss"].append(val_loss)
             history["val_acc"].append(val_acc)
 
             print(f"| Val Loss: {val_loss:.4f}, Val Acc: {val_acc:.4f}")
-            
+
             if epoch == 1 or epoch % print_every == 0:
                 print(f"Val Recall per class: {val_recall_per_class}")
 
- 
-      
             improved = (val_acc - best_val_acc) > min_delta
+
             if improved:
                 best_val_acc = val_acc
                 best_epoch = epoch
                 patience_left = early_stopping_patience
+
                 torch.save(
                     {
                         "epoch": epoch,
                         "model_state_dict": model.state_dict(),
                         "optimizer_state_dict": optimizer.state_dict(),
                         "best_val_acc": best_val_acc,
+                        "seed": seed,
                     },
                     save_path
                 )
                 print(f"Saved new best model (Val Acc = {best_val_acc:.4f})")
+
             else:
                 patience_left -= 1
                 if patience_left <= 0:
@@ -137,20 +149,25 @@ def train_model(
                         f"Best Val Acc = {best_val_acc:.4f} at epoch {best_epoch}."
                     )
                     break
+
     if val_dataset is not None and os.path.exists(save_path):
         ckpt = torch.load(save_path, map_location=device)
         model.load_state_dict(ckpt["model_state_dict"])
-        print(f"Reloaded best model from epoch {ckpt['epoch']} (Val Acc={ckpt['best_val_acc']:.4f})")
-    
+        print(
+            f"Reloaded best model from epoch {ckpt['epoch']} "
+            f"(Val Acc={ckpt['best_val_acc']:.4f})"
+        )
+
     if val_dataset is None:
         torch.save(
-                    {
-                        "epoch": epoch,
-                        "model_state_dict": model.state_dict(),
-                        "optimizer_state_dict": optimizer.state_dict(),
-                        "best_train_acc": train_acc,
-                    },
-                    save_path
-                )
-        
+            {
+                "epoch": epoch,
+                "model_state_dict": model.state_dict(),
+                "optimizer_state_dict": optimizer.state_dict(),
+                "best_train_acc": train_acc,
+                "seed": seed,
+            },
+            save_path
+        )
+
     return history

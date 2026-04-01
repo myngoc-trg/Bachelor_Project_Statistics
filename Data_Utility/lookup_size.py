@@ -4,20 +4,21 @@ from typing import Dict, Tuple, List
 import pandas as pd
 
 
-def lookup_size_from_excel(excel_path: str, stats_filenames=None):
+def lookup_size_from_excel(excel_path: str, stats_filenames=None, quota_bool: bool = False):
     """
     Reads an Excel file containing image names and their corresponding sizes,
-    and returns a dictionary mapping image names to their sizes.
+    and returns a dictionary mapping image names to their sizes. and quota information.
 
     Args:
         excel_path (str): The path to the Excel file.
+        stats_filenames (List[str], optional): A list of filenames to include in statistics.
+        quota_bool (bool): Whether to include quota information.
 
     Returns:
         Dict[str, Tuple[int, int]]: A dictionary where keys are image names and values are tuples of (width, height).
     """
     df = pd.read_excel(excel_path)
     required_columns = {'anyname', 'ping_name', 'majoraxis', 'minoraxis'}
-    
     lookup = {}
     
     for col in required_columns:
@@ -48,7 +49,15 @@ def lookup_size_from_excel(excel_path: str, stats_filenames=None):
     df['majoraxis'] = pd.to_numeric(df['majoraxis'], errors='coerce')
     df['minoraxis'] = pd.to_numeric(df['minoraxis'], errors='coerce')
     
-    species_means = df.groupby('anyname')[['majoraxis', 'minoraxis']].mean()
+    # quota information
+    if quota_bool:
+        df['majoraxis'] = df['majoraxis'].clip(lower=1e-8)  # Ensure no zero division
+        df['quota'] = df['minoraxis'] / df['majoraxis']
+        feature_vec = ['majoraxis', 'minoraxis', 'quota']
+    else:
+        feature_vec = ['majoraxis', 'minoraxis']
+    
+    species_means = df.groupby('anyname')[feature_vec].mean()
     
     for idx, row in df.iterrows():
         if pd.isna(row['majoraxis']) or pd.isna(row['minoraxis']):
@@ -61,10 +70,8 @@ def lookup_size_from_excel(excel_path: str, stats_filenames=None):
     
     species_mean_lookup = {}
     for species, row in species_means.iterrows():
-        species_mean_lookup[species] = (
-            float(row['majoraxis']),
-            float(row['minoraxis'])
-        ) 
+        species_mean_lookup[species] = tuple(float(row[col]) for col in feature_vec)
+      
 
     if stats_filenames is not None:
         stats_df = df[df["ping_name"].astype(str).isin(stats_filenames)].copy()
@@ -76,21 +83,28 @@ def lookup_size_from_excel(excel_path: str, stats_filenames=None):
     else:
         stats_df = df
 
-    global_mean = (
-    float(stats_df["majoraxis"].mean()),
-    float(stats_df["minoraxis"].mean())
-    )
+    global_mean = tuple(float(stats_df[col].mean()) for col in feature_vec)
 
-    global_std = (
-        float(stats_df["majoraxis"].std(ddof=0)),
-        float(stats_df["minoraxis"].std(ddof=0))
-    )   
+    global_std = tuple(float(stats_df[col].std(ddof=0)) for col in feature_vec)
 
     # Original size available, fill lookup
     for _, row in df.iterrows():
         image_name = row['ping_name']
         majoraxis = float(row['majoraxis'])
         minoraxis = float(row['minoraxis'])
-        lookup[image_name] = (majoraxis, minoraxis)
+        lookup[image_name] = tuple(float(row[col]) for col in feature_vec)
     
+    
+        
     return lookup, species_mean_lookup, global_mean, global_std
+
+
+
+
+
+
+
+
+
+
+

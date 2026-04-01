@@ -1,4 +1,5 @@
 from email.policy import default
+from fileinput import filename
 import os
 from sklearn.base import defaultdict
 import torch
@@ -16,7 +17,12 @@ class PollenFolderWithSizeDataset(Dataset):
                  global_mean = None
                  ,global_std = None
                  ,normalize_size = False 
-                 ,print_summary: bool = True):
+                 ,print_summary: bool = True
+                 ,quota_bool: bool = False
+                 ,bootstrap_impute_bool: bool = False
+                 ,species_pool=None
+                 ,flower_pool=None
+                 ):
         """
         Initializes the dataset with the directory of images and a size lookup dictionary.
 
@@ -39,6 +45,11 @@ class PollenFolderWithSizeDataset(Dataset):
         self.species_mean_lookup = species_mean_lookup
         self.transform = transform
         self.fill_missing_bool = fill_missing_bool
+        self.quota_bool = quota_bool
+        
+        self.bootstrap_impute_bool = bootstrap_impute_bool
+        self.species_bool = species_pool
+        self.flower_pool = flower_pool
 
         self.normalize_size = normalize_size
         self.size_mean = torch.tensor(global_mean, dtype=torch.float32) if global_mean is not None else None
@@ -145,6 +156,9 @@ class PollenFolderWithSizeDataset(Dataset):
     
         return samples
     
+    def extract_flower_id(self, filename: str) -> str:
+        return filename.split(" ")[-1].split("_")[0]
+    
     def __getitem__(self, idx: int):
         img_path, class_name = self.samples[idx]
         filename = os.path.basename(img_path)
@@ -161,18 +175,52 @@ class PollenFolderWithSizeDataset(Dataset):
         ''' 
 
         if filename in self.size_lookup:
-            major, minor = self.size_lookup[filename]
-        else:
-            # Fill in species mean from the same species if available
-            #print(f"\nWarning: Size data missing for image '{filename}'. Attempting to fill with species mean.")
-    
-                if class_name in self.species_mean_lookup:
-                    major, minor = self.species_mean_lookup[class_name]
-                else:
-                    print(f"\nWarning: Size data missing for image '{filename}' and no species mean available for '{class_name}'. Skipping sample.")
-       
-        size = torch.tensor([major, minor], dtype=torch.float32)
+            if self.quota_bool:
+                major, minor, quota = self.size_lookup[filename]
+            else:
+                major, minor = self.size_lookup[filename]
         
+        else:
+            if self.bootstrap_impute_bool:
+                from Data_Utility.bootstrap_impute import sample_bootstrap_size
+                #print(f"Bootstrapping size for missing image '{filename}' in class '{class_name}'...")
+                flower_id = self.extract_flower_id(filename)
+
+                sampled = sample_bootstrap_size(
+                    species=class_name,
+                    flower_id=flower_id,
+                    species_pool=self.species_pool,
+                    flower_pool=self.flower_pool,
+                    quota_bool=self.quota_bool
+                )
+
+                if self.quota_bool:
+                    major, minor, quota = sampled
+                    #print(f"Bootstrapped size for '{filename} in class '{class_name}: major={major}, minor={minor}, quota={quota}")
+                else:
+                    major, minor = sampled
+                    #print(f"Bootstrapped size for '{filename}'in class '{class_name}: major={major}, minor={minor}")
+
+            else:
+                # fallback to species mean
+                if class_name in self.species_mean_lookup:
+                    #print(f"Using species mean for missing image '{filename}' in class '{class_name}'...")
+                    if self.quota_bool:
+                        #print(f"Using species mean for '{filename}' in class '{class_name}': major={self.species_mean_lookup[class_name][0]}, minor={self.species_mean_lookup[class_name][1]}, quota={self.species_mean_lookup[class_name][2]}")
+                        major, minor, quota = self.species_mean_lookup[class_name]
+                    else:
+                        #print(f"Using species mean for '{filename}' in class '{class_name}': major={self.species_mean_lookup[class_name][0]}, minor={self.species_mean_lookup[class_name][1]}")
+                        major, minor = self.species_mean_lookup[class_name]
+                else:
+                    raise ValueError(
+                        f"Size data missing for image '{filename}' and no species mean available for '{class_name}'."
+                    )        
+                
+       
+        if self.quota_bool:
+            size = torch.tensor([major, minor, quota], dtype=torch.float32)
+        else:
+            size = torch.tensor([major, minor], dtype=torch.float32)
         label = torch.tensor(self.class_to_idx[class_name], dtype=torch.long)   
         
         if self.normalize_size and (self.size_mean is not None) and (self.size_std is not None):
@@ -184,6 +232,7 @@ class PollenFolderWithSizeDataset(Dataset):
         """Print summary of missing size imputations, including per-species breakdown."""
         print(f"\n=========== {self.img_dir} ===========")
         print(f"fill_missing_bool: {self.fill_missing_bool}")
+        print(f"bootstrap_impute_bool: {self.bootstrap_impute_bool}")
         print(f"Total scanned images: {len(self.samples) + self.missing_size_total_count}")
         print(f"   Final dataset size:   {len(self.samples)}")
         print(f"   Missing size found:   {self.missing_size_total_count}")

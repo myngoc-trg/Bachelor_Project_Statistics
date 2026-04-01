@@ -8,6 +8,7 @@ from Data_Utility.lookup_size import lookup_size_from_excel
 from Data_Utility.dataset import PollenFolderWithSizeDataset
 from Data_Utility.augmented_dataset import AugmentedPollenDataset
 from Data_Utility.config import TRAIN_DIR, TEST_DIR, EXCEL_PATH
+from Data_Utility.bootstrap_impute import build_bootstrap_pools
 
 def list_image_filenames(root_dir):
     exts = ('.jpg', '.jpeg', '.png', '.bmp', '.tiff')
@@ -28,6 +29,8 @@ def setup_datasets(
     aug_bool=False,
     norm_bool=False,
     sep_val_bool=False,
+    quota_bool=False,
+    bootstrap_impute_bool=False,
     seed=42
 ):
     """
@@ -42,9 +45,15 @@ def setup_datasets(
     size_lookup, species_mean_lookup, train_mean, train_std = lookup_size_from_excel(
     EXCEL_PATH,
     stats_filenames=train_filenames
+    ,quota_bool=quota_bool
     )
     #size_lookup, species_mean_lookup, global_mean, global_std = lookup_size_from_excel(EXCEL_PATH)
-
+    
+    if bootstrap_impute_bool:
+        species_pool, flower_pool = build_bootstrap_pools(EXCEL_PATH, list(train_filenames), quota_bool=quota_bool)
+    else:
+        species_pool, flower_pool = None, None
+        
     classes = sorted([
         d for d in os.listdir(TRAIN_DIR)
         if os.path.isdir(os.path.join(TRAIN_DIR, d))
@@ -92,6 +101,10 @@ def setup_datasets(
             transform_aug=aug_transform,
             augment=True,
             normalize_size=norm_bool,
+            quota_bool=quota_bool,
+            bootstrap_impute_bool=bootstrap_impute_bool,
+            species_pool=species_pool,
+            flower_pool=flower_pool,
             global_mean=train_mean,
             global_std=train_std,
             seed=seed,
@@ -108,6 +121,10 @@ def setup_datasets(
             transform_base=base_transform,
             transform_aug=None,
             augment=False,
+            quota_bool=quota_bool,
+            bootstrap_impute_bool=bootstrap_impute_bool,
+            species_pool=species_pool,
+            flower_pool=flower_pool,
             normalize_size=norm_bool,
             global_mean=train_mean,
             global_std=train_std,
@@ -125,6 +142,10 @@ def setup_datasets(
             transform=base_transform
             ,fill_missing_bool=fill_missing_bool
             ,normalize_size=norm_bool,
+            quota_bool=quota_bool,
+            bootstrap_impute_bool=bootstrap_impute_bool,
+            species_pool=species_pool,
+            flower_pool=flower_pool,
             global_mean=train_mean,
             global_std=train_std
         )
@@ -137,6 +158,10 @@ def setup_datasets(
             transform=base_transform
             ,fill_missing_bool=False
             ,normalize_size=norm_bool,
+            quota_bool=quota_bool,
+            bootstrap_impute_bool=bootstrap_impute_bool,
+            species_pool=species_pool,
+            flower_pool=flower_pool,
             global_mean=train_mean,
             global_std=train_std
         )

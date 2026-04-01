@@ -11,7 +11,7 @@ def eval_epoch(model, loader, device
     accuracy_metric = MulticlassAccuracy(
         num_classes=num_classes, average = "micro").to(device)  
     
-    confmat_metric = MulticlassConfusionMatrix(num_classes=10).to(device)
+    confmat_metric = MulticlassConfusionMatrix(num_classes=num_classes).to(device)
 
     model.eval()
     

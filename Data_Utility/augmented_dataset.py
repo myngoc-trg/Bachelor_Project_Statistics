@@ -36,12 +36,14 @@ class AugmentedPollenDataset(PollenFolderWithSizeDataset):
         n_max: int = None,         # if provided, use this as the target max class size instead of computing from data
         global_mean = None
         ,global_std = None
-        ,normalize_size = False 
-        ,print_summary: bool = True,
-
-        # Sampling control:
-        seed: int = 42,
-        shuffle_final: bool = True,
+        ,normalize_size = False
+        ,quota_bool: bool = False 
+        ,print_summary: bool = True
+        ,bootstrap_impute_bool: bool = False
+        ,species_pool=None
+        ,flower_pool=None
+        ,seed: int = 42,
+        shuffle_final: bool = True
     ):
         """
         NOTES on transforms:
@@ -63,8 +65,13 @@ class AugmentedPollenDataset(PollenFolderWithSizeDataset):
         self.transform_base = transform_base
         self.transform_aug = transform_aug
         self.augment = augment
+        
+        self.bootstrap_impute_bool = bootstrap_impute_bool
+        self.species_pool = species_pool
+        self.flower_pool = flower_pool
 
         self.normalize_size = normalize_size
+        self.quota_bool = quota_bool
         self.size_mean = torch.tensor(global_mean, dtype=torch.float32) if global_mean is not None else None
         self.size_std = torch.tensor(global_std, dtype=torch.float32) if global_std is not None else None
                 
@@ -125,6 +132,10 @@ class AugmentedPollenDataset(PollenFolderWithSizeDataset):
             
     def __len__(self):
         return len(self.mapping)
+    
+    def extract_flower_id(self, filename: str) -> str:
+        return filename.split(" ")[-1].split("_")[0]
+    
     def __getitem__(self, idx: int):
         base_idx, is_extra = self.mapping[idx]
         img_path, class_name = self.samples[base_idx]
@@ -146,18 +157,45 @@ class AugmentedPollenDataset(PollenFolderWithSizeDataset):
         ''' 
 
         if filename in self.size_lookup:
-            major, minor = self.size_lookup[filename]
+            if self.quota_bool:
+                major, minor, quota = self.size_lookup[filename]
+            else:
+                major, minor = self.size_lookup[filename]
         else:
-            # Fill in species mean from the same species if available
-            #print(f"\nWarning: Size data missing for image '{filename}'. Attempting to fill with species mean.")
-    
-                if class_name in self.species_mean_lookup:
-                    major, minor = self.species_mean_lookup[class_name]
+            if self.bootstrap_impute_bool:
+                from Data_Utility.bootstrap_impute import sample_bootstrap_size
+
+                flower_id = self.extract_flower_id(filename)
+
+                sampled = sample_bootstrap_size(
+                    species=class_name,
+                    flower_id=flower_id,
+                    species_pool=self.species_pool,
+                    flower_pool=self.flower_pool,
+                    quota_bool=self.quota_bool
+                )
+
+                if self.quota_bool:
+                    major, minor, quota = sampled
                 else:
-                    print(f"\nWarning: Size data missing for image '{filename}' and no species mean available for '{class_name}'. Skipping sample.")
-       
-        size = torch.tensor([major, minor], dtype=torch.float32)
+                    major, minor = sampled
+
+            else:
+                # fallback to species mean
+                if class_name in self.species_mean_lookup:
+                    if self.quota_bool:
+                        major, minor, quota = self.species_mean_lookup[class_name]
+                    else:
+                        major, minor = self.species_mean_lookup[class_name]
+                else:
+                    raise ValueError(
+                        f"Size data missing for image '{filename}' and no species mean available for '{class_name}'.")
         
+        if self.quota_bool:
+            size = torch.tensor([major, minor, quota], dtype=torch.float32)
+        else:
+            size = torch.tensor([major, minor], dtype=torch.float32)
+            
         label = torch.tensor(self.class_to_idx[class_name], dtype=torch.long)   
         
          
