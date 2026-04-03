@@ -48,7 +48,8 @@ class PollenFolderWithSizeDataset(Dataset):
         self.quota_bool = quota_bool
         
         self.bootstrap_impute_bool = bootstrap_impute_bool
-        self.species_bool = species_pool
+        self.species_pool = species_pool  # expected name for bootstrap resolver
+        self.species_bool = species_pool  # legacy alias (if referenced elsewhere)
         self.flower_pool = flower_pool
 
         self.normalize_size = normalize_size
