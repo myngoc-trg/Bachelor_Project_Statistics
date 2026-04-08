@@ -29,7 +29,15 @@ class ConvNeXtTinyWithSize(nn.Module):
         x = self.features(x_img)          # [B, C, H, W]
         x = self.avgpool(x)               # [B, C, 1, 1]
         return torch.flatten(x, 1)        # [B, C]
-            
+    
+    
+    def forward_features(self, x_img, x_size):
+            x = self.features(x_img)          # [B, C, H, W]
+            x = self.avgpool(x)               # [B, C, 1, 1]
+            img_feat = torch.flatten(x, 1)    # [B, C]
+            fused = torch.cat([img_feat, x_size], dim=1)  # [B, C+size_dim]
+            return fused
+    
     def forward(self, x_img, x_size):
         x = self.features(x_img)          # [B, C, H, W]
         x = self.avgpool(x)               # [B, C, 1, 1]
@@ -38,3 +46,5 @@ class ConvNeXtTinyWithSize(nn.Module):
         fused = torch.cat([img_feat, x_size], dim=1)  # [B, C+2]
         logits = self.classifier(fused)
         return logits
+    
+    

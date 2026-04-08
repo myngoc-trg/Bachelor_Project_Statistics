@@ -25,6 +25,9 @@ def eval_epoch(model, loader, device
     total_loss = 0
     batches = 0
     
+    prob_list = []
+    y_list = []
+    
     with torch.no_grad():
         for imgs, sizes, labels in loader:
             imgs = imgs.to(device)
@@ -33,6 +36,10 @@ def eval_epoch(model, loader, device
 
             outputs = model(imgs, sizes)
             preds = outputs.argmax(dim=1)
+            probs = torch.softmax(outputs, dim=1)
+            
+            prob_list.append(probs.cpu())
+            y_list.append(labels.cpu())
             
             recall_metric.update(preds, labels)
             accuracy_metric.update(preds, labels)
@@ -64,5 +71,8 @@ def eval_epoch(model, loader, device
         print("Mean of batch means:", sum(all_means) / len(all_means))
         print("Mean of batch stds:", sum(all_stds) / len(all_stds))
         print("==================================\n")
+        
+    probs_np = torch.cat(prob_list, dim=0).numpy()
+    y_np = torch.cat(y_list, dim=0).numpy()
 
-    return recall_per_class, accuracy, val_loss, conf_matrix
+    return recall_per_class, accuracy, probs_np, y_np, conf_matrix
