@@ -141,7 +141,7 @@ class AugmentedPollenDataset(PollenFolderWithSizeDataset):
         return len(self.mapping)
     
     def extract_flower_id(self, filename):
-        print("DEBUG extract_flower_id got:", type(filename), filename)
+        #print("DEBUG extract_flower_id got:", type(filename), filename)
         if isinstance(filename, (list, tuple)):
             if len(filename) != 1:
                 raise ValueError(f"Expected one filename, got {filename}")
