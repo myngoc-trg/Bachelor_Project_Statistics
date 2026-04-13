@@ -1,6 +1,4 @@
-from email.policy import default
 import os
-from sklearn.base import defaultdict
 import torch
 from torch.utils.data import Dataset
 from PIL import Image
@@ -44,6 +42,7 @@ class AugmentedPollenDataset(PollenFolderWithSizeDataset):
         ,flower_pool=None
         ,seed: int = 42,
         shuffle_final: bool = True
+        ,return_flowerid:bool = False
     ):
         """
         NOTES on transforms:
@@ -60,6 +59,7 @@ class AugmentedPollenDataset(PollenFolderWithSizeDataset):
             fill_missing_bool=fill_missing_bool,
             transform=None,               # we will apply transforms ourselves
             print_summary=print_summary,
+            return_flowerid=False
         )
         
         self.transform_base = transform_base
@@ -74,6 +74,8 @@ class AugmentedPollenDataset(PollenFolderWithSizeDataset):
         self.quota_bool = quota_bool
         self.size_mean = torch.tensor(global_mean, dtype=torch.float32) if global_mean is not None else None
         self.size_std = torch.tensor(global_std, dtype=torch.float32) if global_std is not None else None
+
+        self.return_flowerid = return_flowerid
                 
         per_class_indices = defaultdict(list)
         for i, (_, class_name) in enumerate(self.samples):
@@ -118,6 +120,11 @@ class AugmentedPollenDataset(PollenFolderWithSizeDataset):
         self.n_max = n_max
         self.class_sizes = class_sizes
         self.extra_total = extra_total
+
+        self.final_filenames = [self.filenames[base_idx] for base_idx, _ in self.mapping]
+        self.final_flower_ids = [self.flower_ids[base_idx] for base_idx, _ in self.mapping]
+        self.final_targets = [self.targets[base_idx] for base_idx, _ in self.mapping]
+        self.final_is_extra = [is_extra for _, is_extra in self.mapping]
         
         if print_summary and self.augment:
             print(f"\n=== Augmented-to-max dataset built from '{img_dir}' ===")
@@ -133,7 +140,17 @@ class AugmentedPollenDataset(PollenFolderWithSizeDataset):
     def __len__(self):
         return len(self.mapping)
     
-    def extract_flower_id(self, filename: str) -> str:
+    def extract_flower_id(self, filename):
+        print("DEBUG extract_flower_id got:", type(filename), filename)
+        if isinstance(filename, (list, tuple)):
+            if len(filename) != 1:
+                raise ValueError(f"Expected one filename, got {filename}")
+            filename = filename[0]
+
+        if not isinstance(filename, str):
+            raise TypeError(f"extract_flower_id expected str, got {type(filename)}: {filename}")
+
+        filename = os.path.basename(filename)
         return filename.split(" ")[-1].split("_")[0]
     
     def __getitem__(self, idx: int):
@@ -201,6 +218,10 @@ class AugmentedPollenDataset(PollenFolderWithSizeDataset):
          
         if self.normalize_size and (self.size_mean is not None) and (self.size_std is not None):
             size = (size - self.size_mean) / torch.clamp(self.size_std, min=1e-8)
+        
+        if self.return_flowerid:
+            flower_id = self.final_flower_ids[idx]
+            return img, size, label, filename, flower_id 
 
         return img, size, label
               

@@ -4,6 +4,18 @@ import seaborn as sns
 import torch
 from matplotlib.colors import LinearSegmentedColormap
 
+BASELINE_RECALL_ORDER_NAMES = [
+    "Brassica napus",
+    "Tussilago farfara",
+    "Cichorium intybus",
+    "Capsella bursa-pastoris",
+    "Tragopogon pratensis",
+    "Hieracium umbellatum",
+    "Sonchus arvensis",
+    "Hypochaeris radicata",
+    "Bellis perennis",
+    "Crepis capillaris",
+]
 
 def plot_confusion_matrix(
     conf,
@@ -16,6 +28,7 @@ def plot_confusion_matrix(
     tick_size=14,       # class names on axes
     label_size=16,      # axis labels
     title_size=18       # title
+    ,fixed_order =None
 ):
     conf = conf.cpu()
 

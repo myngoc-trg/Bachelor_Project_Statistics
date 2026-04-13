@@ -32,6 +32,7 @@ def setup_datasets(
     quota_bool=False,
     bootstrap_impute_bool=False,
     seed=42
+    ,return_flowerid: bool = False
 ):
     """
     Builds datasets using fixed project paths.
@@ -110,6 +111,7 @@ def setup_datasets(
             seed=seed,
             shuffle_final=True,
             print_summary=True
+            ,return_flowerid=return_flowerid
         )
 
         test_dataset = AugmentedPollenDataset(
@@ -130,7 +132,8 @@ def setup_datasets(
             global_std=train_std,
             seed=seed,
             shuffle_final=True,
-            print_summary=True
+            print_summary=True,
+            return_flowerid=return_flowerid
         )
 
     else:
@@ -148,6 +151,7 @@ def setup_datasets(
             flower_pool=flower_pool,
             global_mean=train_mean,
             global_std=train_std
+            ,return_flowerid=return_flowerid
         )
         
         test_dataset = PollenFolderWithSizeDataset(
@@ -164,6 +168,7 @@ def setup_datasets(
             flower_pool=flower_pool,
             global_mean=train_mean,
             global_std=train_std
+            ,return_flowerid=return_flowerid
         )
 
 

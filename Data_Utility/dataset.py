@@ -22,6 +22,7 @@ class PollenFolderWithSizeDataset(Dataset):
                  ,bootstrap_impute_bool: bool = False
                  ,species_pool=None
                  ,flower_pool=None
+                 ,return_flowerid: bool = False
                  ):
         """
         Initializes the dataset with the directory of images and a size lookup dictionary.
@@ -55,6 +56,8 @@ class PollenFolderWithSizeDataset(Dataset):
         self.normalize_size = normalize_size
         self.size_mean = torch.tensor(global_mean, dtype=torch.float32) if global_mean is not None else None
         self.size_std = torch.tensor(global_std, dtype=torch.float32) if global_std is not None else None
+
+        self.return_flowerid = return_flowerid
         
         # Build list of (image_path, label) tuples
         all_samples = self._scan_root()
@@ -69,12 +72,18 @@ class PollenFolderWithSizeDataset(Dataset):
         
         self.samples = [] # list of (img_path, label)
         self.targets = [] # list of class_name
+        self.filenames = []
+        self.flower_ids = []
         
         for img_path, class_name in all_samples:
             filename = os.path.basename(img_path)
+            flower_id = self.extract_flower_id(filename)
+
             if filename in self.size_lookup:
                 self.samples.append((img_path, class_name))
                 self.targets.append(class_name)
+                self.filenames.append(filename)
+                self.flower_ids.append(flower_id)
                 continue
             
             self.missing_size_total_count += 1
@@ -85,6 +94,8 @@ class PollenFolderWithSizeDataset(Dataset):
             
             self.samples.append((img_path, class_name)) # keep the sample even if size is missing, will handle in __getitem__ with filling logic
             self.targets.append(class_name)
+            self.filenames.append(filename)
+            self.flower_ids.append(flower_id)
         
         if print_summary:
             print(f"\nInitialized dataset from '{self.img_dir}' with {len(self.samples)} samples.")
@@ -157,7 +168,23 @@ class PollenFolderWithSizeDataset(Dataset):
     
         return samples
     
-    def extract_flower_id(self, filename: str) -> str:
+    def extract_flower_id(self, filename):
+        """
+        Accepts a single filename string, path, or a 1-element list/tuple.
+        Returns the flower ID before the underscore.
+        Example:
+            'Tussilago farfara 1000328_3192.png' -> '1000328'
+            '1000328_3192.png' -> '1000328'
+        """
+        if isinstance(filename, (list, tuple)):
+            if len(filename) != 1:
+                raise ValueError(f"Expected one filename, got {filename}")
+            filename = filename[0]
+
+        if not isinstance(filename, str):
+            raise TypeError(f"extract_flower_id expected str, got {type(filename)}: {filename}")
+
+        filename = os.path.basename(filename)
         return filename.split(" ")[-1].split("_")[0]
     
     def __getitem__(self, idx: int):
@@ -227,6 +254,10 @@ class PollenFolderWithSizeDataset(Dataset):
         if self.normalize_size and (self.size_mean is not None) and (self.size_std is not None):
             size = (size - self.size_mean) / torch.clamp(self.size_std, min=1e-8)
 
+        if self.return_flowerid:
+            flower_id = self.flower_ids[idx]
+            return img, size, label, filename, flower_id
+        
         return img, size, label
     
     def print_missing_summary(self, top_k: int | None = None):
