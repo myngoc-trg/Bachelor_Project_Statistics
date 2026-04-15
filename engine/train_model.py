@@ -104,8 +104,9 @@ def train_model(
             f"Train Loss: {train_loss:.4f}, Train Acc: {train_acc:.4f}"
         )
 
+    
         if val_dataset is not None:
-            val_recall_per_class, val_acc, val_loss, _ = eval_epoch(
+            val_recall_per_class, val_acc, _,_, _ = eval_epoch(
                 model=model,
                 loader=val_loader,
                 device=device,
@@ -114,10 +115,11 @@ def train_model(
                 inspect_features=False
             )
 
-            history["val_loss"].append(val_loss)
+            #history["val_loss"].append(val_loss)
             history["val_acc"].append(val_acc)
 
-            print(f"| Val Loss: {val_loss:.4f}, Val Acc: {val_acc:.4f}")
+            #print(f"| Val Loss: {val_loss:.4f}, Val Acc: {val_acc:.4f}")
+            print(f"| Val Acc: {val_acc:.4f}")
 
             if epoch == 1 or epoch % print_every == 0:
                 print(f"Val Recall per class: {val_recall_per_class}")

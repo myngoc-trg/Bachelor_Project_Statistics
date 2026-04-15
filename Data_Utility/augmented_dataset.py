@@ -43,6 +43,8 @@ class AugmentedPollenDataset(PollenFolderWithSizeDataset):
         ,seed: int = 42,
         shuffle_final: bool = True
         ,return_flowerid:bool = False
+        ,samples: List[Tuple[str, str]] | None = None
+        ,dataset_name: str | None = None
     ):
         """
         NOTES on transforms:
@@ -60,6 +62,15 @@ class AugmentedPollenDataset(PollenFolderWithSizeDataset):
             transform=None,               # we will apply transforms ourselves
             print_summary=print_summary,
             return_flowerid=False
+            ,global_mean=global_mean,
+            global_std=global_std,
+            normalize_size=normalize_size,
+            quota_bool=quota_bool,
+            bootstrap_impute_bool=bootstrap_impute_bool,
+            species_pool=species_pool,
+            flower_pool=flower_pool,
+            samples=samples,
+            dataset_name=dataset_name
         )
         
         self.transform_base = transform_base

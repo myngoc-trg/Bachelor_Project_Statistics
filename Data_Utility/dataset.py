@@ -7,6 +7,8 @@ from torch.utils.data import Dataset
 from PIL import Image
 from typing import List, Tuple, Dict
 from collections import defaultdict
+import random
+from Data_Utility.bootstrap_impute import sample_bootstrap_size
 
 class PollenFolderWithSizeDataset(Dataset):
     def __init__(self, img_dir: str, class_to_idx: Dict[str, int], 
@@ -23,6 +25,9 @@ class PollenFolderWithSizeDataset(Dataset):
                  ,species_pool=None
                  ,flower_pool=None
                  ,return_flowerid: bool = False
+                 ,samples: List[Tuple[str, str]] | None = None
+                 ,dataset_name: str | None = None
+                 ,seed:int = 42
                  ):
         """
         Initializes the dataset with the directory of images and a size lookup dictionary.
@@ -58,10 +63,23 @@ class PollenFolderWithSizeDataset(Dataset):
         self.size_std = torch.tensor(global_std, dtype=torch.float32) if global_std is not None else None
 
         self.return_flowerid = return_flowerid
+        self.dataset_name = dataset_name if dataset_name is not None else (img_dir if img_dir is not None else "custom_samples")
         
+        self.rng = random.Random(seed)
+
+        self.bootstrap_lookup = {}
+
         # Build list of (image_path, label) tuples
-        all_samples = self._scan_root()
+        #all_samples = self._scan_root()
         
+        if samples is not None:
+            all_samples = samples
+        else:
+            if img_dir is None:
+                raise ValueError("Either img_dir or samples must be provided.")
+            all_samples = self._scan_root()
+
+
         # Count missing size entries for reporting
         self.missing_size_total_count = 0
         
@@ -97,13 +115,29 @@ class PollenFolderWithSizeDataset(Dataset):
             self.filenames.append(filename)
             self.flower_ids.append(flower_id)
         
+        if self.bootstrap_impute_bool:
+            for img_path, class_name in self.samples:
+                filename = os.path.basename(img_path)
+
+                # Only bootstrap for samples missing in size_lookup
+                if filename not in self.size_lookup:
+                    flower_id = self.extract_flower_id(filename)
+
+                    self.bootstrap_lookup[filename] = sample_bootstrap_size(
+                        species=class_name,
+                        flower_id=flower_id,
+                        species_pool=self.species_pool,
+                        flower_pool=self.flower_pool,
+                        quota_bool=self.quota_bool,
+                        rng=self.rng
+                    )
+        
         if print_summary:
-            print(f"\nInitialized dataset from '{self.img_dir}' with {len(self.samples)} samples.")
+            print(f"\nInitialized dataset from '{self.dataset_name}' with {len(self.samples)} samples.")
             if self.missing_size_total_count > 0:
                 self.print_missing_summary()
             else:
-                print(f"\nNo missing size data found in the image dataset of {self.img_dir}.")
-        
+                print(f"\nNo missing size data found in the image dataset of {self.dataset_name}.")
     
     def __len__(self):
         return len(self.samples)
@@ -210,39 +244,29 @@ class PollenFolderWithSizeDataset(Dataset):
         
         else:
             if self.bootstrap_impute_bool:
-                from Data_Utility.bootstrap_impute import sample_bootstrap_size
-                #print(f"Bootstrapping size for missing image '{filename}' in class '{class_name}'...")
-                flower_id = self.extract_flower_id(filename)
+                if filename not in self.bootstrap_lookup:
+                    raise ValueError(
+                        f"Missing bootstrap-imputed value for '{filename}'. "
+                        f"Expected it to be precomputed in __init__."
+                    )
 
-                sampled = sample_bootstrap_size(
-                    species=class_name,
-                    flower_id=flower_id,
-                    species_pool=self.species_pool,
-                    flower_pool=self.flower_pool,
-                    quota_bool=self.quota_bool
-                )
+                sampled = self.bootstrap_lookup[filename]
 
                 if self.quota_bool:
                     major, minor, quota = sampled
-                    #print(f"Bootstrapped size for '{filename} in class '{class_name}: major={major}, minor={minor}, quota={quota}")
                 else:
                     major, minor = sampled
-                    #print(f"Bootstrapped size for '{filename}'in class '{class_name}: major={major}, minor={minor}")
 
             else:
-                # fallback to species mean
                 if class_name in self.species_mean_lookup:
-                    #print(f"Using species mean for missing image '{filename}' in class '{class_name}'...")
                     if self.quota_bool:
-                        #print(f"Using species mean for '{filename}' in class '{class_name}': major={self.species_mean_lookup[class_name][0]}, minor={self.species_mean_lookup[class_name][1]}, quota={self.species_mean_lookup[class_name][2]}")
                         major, minor, quota = self.species_mean_lookup[class_name]
                     else:
-                        #print(f"Using species mean for '{filename}' in class '{class_name}': major={self.species_mean_lookup[class_name][0]}, minor={self.species_mean_lookup[class_name][1]}")
                         major, minor = self.species_mean_lookup[class_name]
                 else:
                     raise ValueError(
                         f"Size data missing for image '{filename}' and no species mean available for '{class_name}'."
-                    )        
+                    )
                 
        
         if self.quota_bool:

@@ -56,6 +56,7 @@ def sample_bootstrap_size(
     species_pool,
     flower_pool
     ,quota_bool: bool =False
+    ,rng=None
 ):
     """
     First try same species + same flower.
@@ -63,15 +64,17 @@ def sample_bootstrap_size(
     
     Returns a (major, minor) pair, or (major, minor, quota) if quota_bool is True.
     """
-    
+    if rng is None:
+        rng = random
+
     if species_pool is None or flower_pool is None:
         raise ValueError("Bootstrap pools must be provided for imputation.")
     
     if (species, flower_id) in flower_pool and len(flower_pool[(species, flower_id)]) > 0:
-        sampled = random.choice(flower_pool[(species, flower_id)])
+        sampled = rng.choice(flower_pool[(species, flower_id)])
 
     elif species in species_pool and len(species_pool[species]) > 0:
-        sampled = random.choice(species_pool[species])
+        sampled = rng.choice(species_pool[species])
 
     else:
         raise ValueError(f"No bootstrap donor available for species '{species}'.")
