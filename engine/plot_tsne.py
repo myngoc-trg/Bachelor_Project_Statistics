@@ -43,7 +43,7 @@ def plot_pca_tsne_flowerid_two_panels(
     class_names,
     confusing_classes,
     method="pca",
-    figsize=(6.8, 3.4),   # LaTeX-friendly full-width figure
+    figsize=(6.8, 3.4),   
     point_size=14,
     alpha=0.80,
     title_fontsize=11,
@@ -195,6 +195,12 @@ def plot_pca_tsne_flowerid_two_panels(
         ax.set_xlabel(xlabel, fontsize=label_fontsize)
         ax.set_ylabel(ylabel, fontsize=label_fontsize)
         ax.tick_params(labelsize=tick_fontsize)
+
+        #remove box, keep axes
+        ax.spines["top"].set_visible(False)
+        ax.spines["right"].set_visible(False)
+        ax.spines["left"].set_visible(True)
+        ax.spines["bottom"].set_visible(True)
     # Species legend: shape only, shown inside left panel at upper-left corner
     # Species legend: shape only
     
