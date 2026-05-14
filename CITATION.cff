@@ -6,6 +6,7 @@ authors:
   - family-names: "Truong"
     given-names: "Nancy"
     affiliation: "Lund University"
+doi: 10.5281/zenodo.20187141
 version: "1.0.0"
 date-released: "2026-05-14"
 repository-code: "https://github.com/myngoc-trg/Bachelor_Project_Statistics"
