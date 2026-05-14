@@ -3,7 +3,7 @@
 This repository contains code, notebooks, figures, and experiment material for the bachelor thesis:
 
 **Improving Pollen Species Classification Using Deep Learning and Size Features**  
-Nancy Truong, Lund University, 2025.
+Nancy Truong, Lund University, 2026.
 
 The project investigates deep-learning models for classifying microscopic pollen-grain images from ten plant species using RGB image crops together with pollen size measurements. The work builds on the ResNet18 image-and-size model of Jurdell (2025) and evaluates imputation, validation-based model selection, class-balancing augmentation, focal loss, reduced image-feature representation, and ConvNeXt-Tiny.
 
