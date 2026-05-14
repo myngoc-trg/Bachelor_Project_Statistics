@@ -1,0 +1,24 @@
+cff-version: 1.2.0
+message: "If you use this repository, please cite it as below."
+title: "Improving Pollen Species Classification Using Deep Learning and Size Features"
+type: software
+authors:
+  - family-names: "Truong"
+    given-names: "Nancy"
+    affiliation: "Lund University"
+version: "1.0.0"
+date-released: "2026-05-14"
+repository-code: "https://github.com/myngoc-trg/Bachelor_Project_Statistics"
+url: "https://github.com/myngoc-trg/Bachelor_Project_Statistics"
+abstract: "Code and experiment material for a thesis project on pollen species classification using deep-learning image models and pollen size features."
+keywords:
+  - pollen classification
+  - deep learning
+  - computer vision
+  - PyTorch
+  - ResNet18
+  - ConvNeXt
+  - size features
+  - flower-level split
+license: "MIT"
+

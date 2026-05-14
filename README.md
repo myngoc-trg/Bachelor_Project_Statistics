@@ -38,3 +38,20 @@ The main remaining difficulty was the separation of *Crepis capillaris* and *Hyp
 ├── train_species_flower_sizes.pdf
 ├── train_test_species_sizes.pdf
 └── README.md
+```
+
+## Data availability
+
+The raw pollen image dataset and size measurements may be subject to separate access restrictions and are not automatically covered by the software license of this repository. This repository is intended to document the code, methodology, and experiment structure used in the thesis project.
+
+## Citation
+
+If you use this repository, please cite it using the metadata in [`CITATION.cff`](CITATION.cff).
+
+After this repository is archived on Zenodo, the DOI will be added here.
+
+## License
+
+This repository is released under the MIT License. See [`LICENSE`](LICENSE).
+
+The MIT License applies to the code and documentation in this repository. The dataset itself may be subject to separate access restrictions and is not automatically covered by this software license.
